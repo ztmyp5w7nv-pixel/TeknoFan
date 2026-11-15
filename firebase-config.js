@@ -1,13 +1,8 @@
-/* ===========================================================
-   BURAYI KENDİ FIREBASE PROJENİN BİLGİLERİYLE DOLDUR.
-   Firebase Console > Project Settings > General > Your apps
-   kısmından "firebaseConfig" objesini buraya yapıştır.
-   =========================================================== */
 window.firebaseConfig = {
-  apiKey: "BURAYA_API_KEY",
-  authDomain: "BURAYA_PROJE.firebaseapp.com",
-  projectId: "BURAYA_PROJE_ID",
-  storageBucket: "BURAYA_PROJE.appspot.com",
-  messagingSenderId: "BURAYA_SENDER_ID",
-  appId: "BURAYA_APP_ID"
+  apiKey: "AIzaSyBpqOHhKIK99RPQR6r99nGMrS266wpsQbs",
+  authDomain: "teknofan-f195d.firebaseapp.com",
+  projectId: "teknofan-f195d",
+  storageBucket: "teknofan-f195d.firebasestorage.app",
+  messagingSenderId: "491720910881",
+  appId: "1:491720910881:web:7fea9d4860be1640a19b60"
 };
