@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Yönetim Paneli | Teknokent Koleji</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔑</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo">TK</div>
+      <div>
+        <h1>Yönetim Paneli</h1>
+        <span>Sadece sana özel</span>
+      </div>
+    </div>
+    <a href="index.html" class="nav-link">← Siteye dön</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- GİRİŞ EKRANI -->
+  <div id="loginBox" class="card admin-login">
+    <h3 style="margin-top:0;">Giriş Yap</h3>
+    <div class="form-row">
+      <label>Yönetici şifresi</label>
+      <input type="password" id="passInput" placeholder="Şifre" />
+    </div>
+    <button class="btn btn-vote" onclick="tryLogin()">Giriş Yap</button>
+    <p id="loginError" style="color:var(--red);font-size:13px;display:none;margin-top:10px;">Şifre yanlış.</p>
+  </div>
+
+  <!-- PANEL -->
+  <div id="panel" style="display:none;">
+
+    <div class="card" style="margin-bottom:20px;">
+      <h3 style="margin-top:0;">➕ Yeni Öğretmen Ekle</h3>
+      <div class="form-row">
+        <label>İsim Soyisim</label>
+        <input type="text" id="nameInput" placeholder="Örn: Ayşe Yılmaz" />
+      </div>
+      <div class="form-row">
+        <label>Branş</label>
+        <input type="text" id="branchInput" placeholder="Örn: Matematik Öğretmeni" />
+      </div>
+      <div class="form-row">
+        <label>Fotoğraf (opsiyonel)</label>
+        <div class="photo-row">
+          <img id="photoPreview" class="photo-preview" src="assets/default-avatar.svg" />
+          <input type="file" id="photoInput" accept="image/*" />
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="submitTeacher()">Kaydet</button>
+      <span id="formMsg" style="font-size:13px;color:var(--green);margin-left:10px;"></span>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-title" style="margin:0 0 6px;">
+        <h3 style="margin:0;">👥 Öğretmen Listesi</h3>
+        <span id="weekLabel"></span>
+      </div>
+      <div id="teacherList" class="admin-list"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <h3 style="margin-top:0;">⚙️ Ayarlar</h3>
+      <div class="form-row">
+        <label>Yönetici şifresini değiştir</label>
+        <input type="text" id="newPassInput" placeholder="Yeni şifre" />
+      </div>
+      <button class="btn btn-outline" onclick="changePassword()">Şifreyi Güncelle</button>
+      <span id="passMsg" style="font-size:13px;color:var(--green);margin-left:10px;"></span>
+      <hr style="margin:18px 0;border:none;border-top:1px solid rgba(0,0,0,0.08);" />
+      <button class="btn btn-danger" onclick="resetThisWeekVotes()">Bu Haftanın Oylarını Sıfırla</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+let editingPhoto = ""; // base64 geçici tutucu
+
+async function tryLogin() {
+  const val = document.getElementById("passInput").value;
+  const correct = await getAdminPassword();
+  if (val === correct) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+    renderAll();
+  } else {
+    document.getElementById("loginError").style.display = "block";
+  }
+}
+document.getElementById("passInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") tryLogin();
+});
+
+document.getElementById("photoInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    editingPhoto = reader.result;
+    document.getElementById("photoPreview").src = editingPhoto;
+  };
+  reader.readAsDataURL(file);
+});
+
+async function submitTeacher() {
+  const name = document.getElementById("nameInput").value.trim();
+  const branch = document.getElementById("branchInput").value.trim();
+  if (!name) {
+    alert("Lütfen öğretmen ismini gir.");
+    return;
+  }
+  document.getElementById("formMsg").textContent = "Kaydediliyor...";
+  await addTeacher({ name, branch, photo: editingPhoto });
+  document.getElementById("nameInput").value = "";
+  document.getElementById("branchInput").value = "";
+  document.getElementById("photoInput").value = "";
+  document.getElementById("photoPreview").src = "assets/default-avatar.svg";
+  editingPhoto = "";
+  document.getElementById("formMsg").textContent = "✓ Eklendi";
+  setTimeout(() => (document.getElementById("formMsg").textContent = ""), 2000);
+  renderAll();
+}
+
+async function renderAll() {
+  const { weekKey } = getDayInfo();
+  document.getElementById("weekLabel").textContent = "Hafta: " + weekKey;
+  const list = document.getElementById("teacherList");
+  list.innerHTML = `<div class="empty">Yükleniyor...</div>`;
+  const teachers = await getTeachers();
+  const votes = await getVotes(weekKey);
+
+  if (!teachers.length) {
+    list.innerHTML = `<div class="empty">Henüz öğretmen eklenmedi.</div>`;
+    return;
+  }
+
+  list.innerHTML = teachers
+    .map(
+      (t) => `
+    <div class="teacher-row">
+      <img src="${t.photo || DEFAULT_AVATAR}" alt="${t.name}" />
+      <div class="meta">
+        <b>${t.name}</b>
+        <div>${t.branch || ""}</div>
+      </div>
+      <div class="votes">${votes[t.id] || 0} oy</div>
+      <button class="btn btn-danger" style="padding:7px 12px;font-size:12px;" onclick="removeTeacher('${t.id}')">Sil</button>
+    </div>`
+    )
+    .join("");
+}
+
+async function removeTeacher(id) {
+  if (!confirm("Bu öğretmeni silmek istediğine emin misin?")) return;
+  await deleteTeacher(id);
+  renderAll();
+}
+
+async function changePassword() {
+  const val = document.getElementById("newPassInput").value.trim();
+  if (!val) return;
+  await setAdminPassword(val);
+  document.getElementById("newPassInput").value = "";
+  document.getElementById("passMsg").textContent = "✓ Şifre güncellendi";
+  setTimeout(() => (document.getElementById("passMsg").textContent = ""), 2000);
+}
+
+async function resetThisWeekVotes() {
+  const { weekKey } = getDayInfo();
+  if (!confirm("Bu haftanın tüm oyları silinecek. Emin misin?")) return;
+  const snap = await db.collection("votes_" + weekKey).get();
+  const batch = db.batch();
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+  renderAll();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+TEKNOKENT KOLEJİ - HAFTANIN ÖĞRETMENİ
+=======================================
+
+BU SÜRÜM NE DEĞİŞTİ?
+Artık öğretmen listesi, oylar ve "haftanın öğretmeni" bilgisi Firebase
+Firestore adlı ücretsiz bir bulut veritabanında tutuluyor. Yani admin
+panelinden yaptığın her değişiklik, siteye giren HERKESTE anında görünür
+(GitHub Pages / Cloudflare Pages gibi statik barındırmalarla birlikte
+çalışır, ayrı bir sunucu kurmana gerek yok).
+
+KURULUM (tek seferlik, 5 dakika)
+1) https://console.firebase.google.com adresine git, Google hesabınla gir.
+2) "Add project" ile yeni proje oluştur (adı önemli değil, örn. "teknokent-ogretmen").
+   Google Analytics sorusuna "Hayır/Disable" diyebilirsin, gerekmiyor.
+3) Sol menüden Build > Firestore Database > "Create database".
+   - Konum olarak sana yakın bir Avrupa bölgesi seç (örn. eur3 Frankfurt).
+   - "Start in production mode" seçebilirsin (kurallarını birazdan biz vereceğiz).
+4) Sol üstte dişli ikonu > Project settings > en altta "Your apps" > "</>"
+   (Web) ikonuna tıkla, bir takma ad gir, "Register app" de.
+   Karşına çıkan "firebaseConfig" objesindeki bilgileri kopyala.
+5) Bu klasördeki firebase-config.js dosyasını aç, BURAYA_... yazan yerleri
+   kopyaladığın gerçek değerlerle değiştir, kaydet.
+6) Firebase Console'da Firestore Database > Rules sekmesine git, bu klasördeki
+   firestore.rules dosyasının içeriğini yapıştır, "Publish" de.
+   (Bu kurallar herkesin okuma/yazma yapmasına izin verir — admin şifre kontrolü
+   site tarafında yapılıyor, bkz. "GÜVENLİK NOTU" aşağıda.)
+7) Artık index.html, admin.html, style.css, app.js, firebase-config.js,
+   assets/ klasörünü GitHub reposuna yükle (önceki talimatlardaki gibi).
+   GitHub Pages / Cloudflare Pages otomatik günceller.
+
+ADMİN PANELİ
+- admin.html sayfasına git. Varsayılan şifre: teknokent2026
+- Giriş yaptıktan sonra öğretmen ekle/sil, şifreyi değiştir.
+- Yaptığın her değişiklik artık Firestore'a yazılır ve siteyi açan herkese
+  (farklı cihaz/tarayıcı olsa bile) anında yansır.
+
+NASIL ÇALIŞIYOR? (değişmedi)
+- Pazartesi–Cuma : Oylama açık.
+- Cumartesi       : Sistem kapalı.
+- Pazar           : En çok oy alan öğretmen otomatik hesaplanıp ilan edilir
+                    (gerçek bir e-posta/SMS değil, site üzerinde duyuru).
+- Pazartesi       : Kazananın profilinde 👑 ve üstte "Haftanın Öğretmeni" şeridi,
+                    bir sonraki Pazar'a kadar görünür kalır.
+
+GÜVENLİK NOTU (önemli, dürüstçe söylemek isterim)
+Hesap sistemi istemediğin için admin şifresi sadece tarayıcıdaki arayüzde
+kontrol ediliyor; Firestore veritabanının kendisi şu an herkese açık yazma
+izni veriyor. Yani çok meraklı/teknik bir öğrenci, tarayıcının geliştirici
+konsolunu kullanarak admin paneline girmeden de veritabanına yazabilir
+(örn. sahte oy ekleyebilir). Normal kullanım için bu bir sorun olmaz, ama
+"olabildiğince sağlam" bir sistem istersen, ileride buna Firebase
+Authentication (gerçek admin girişi) ekleyebiliriz — istersen bunu da
+hazırlarım, yeter ki söyle.
+
+Ayrıca: aynı öğrenci farklı tarayıcı/gizli sekme kullanarak birden fazla
+oy kullanabilir (cihaz bazlı kontrol var, kişi bazlı değil). Bunu da okul
+e-postasıyla gerçek giriş ekleyerek çözebiliriz.
+
+GÖRSELLER
+- Öğretmen fotoğrafı eklemezsen varsayılan bir avatar gösterilir.
+- Fotoğrafları küçük (örn. 300-500px genişlikte) seçersen hem site daha
+  hızlı açılır hem Firestore'un ücretsiz kotasını az kullanırsın.

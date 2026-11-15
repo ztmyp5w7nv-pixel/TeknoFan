@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Herkes öğretmenleri ve haftanın şampiyonunu okuyabilir
+    match /teachers/{teacherId} {
+      allow read: if true;
+      allow write: if true; // Not: admin şifresi sadece site içinde kontrol edilir (bkz. OKU_BENI.txt)
+    }
+
+    match /votes_{weekKey}/{teacherId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /meta/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

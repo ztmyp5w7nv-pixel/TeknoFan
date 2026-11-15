@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Teknokent Koleji | Haftanın Öğretmeni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo">TK</div>
+      <div>
+        <h1>Teknokent Koleji</h1>
+        <span>Haftanın Öğretmeni Oylaması</span>
+      </div>
+    </div>
+    <a href="admin.html" class="nav-link">Yönetim ↗</a>
+  </div>
+</div>
+
+<div class="container">
+  <div id="statusBanner"></div>
+  <div id="championStrip"></div>
+
+  <div class="section-title">
+    <h3>Öğretmenler</h3>
+    <span id="teacherCount"></span>
+  </div>
+
+  <div id="teacherGrid" class="grid"></div>
+
+  <footer>
+    Teknokent Koleji için öğrenciler arası sevgi dolu bir oylama 💙 · Oylar sadece bu cihazda saklanır.
+  </footer>
+</div>
+
+<script src="app.js"></script>
+<script>
+const { weekKey, phase } = getDayInfo();
+let CHAMPION = null;
+let TEACHERS = [];
+let VOTES = {};
+
+function renderStatusBanner() {
+  const el = document.getElementById("statusBanner");
+  if (phase === "open") {
+    el.innerHTML = `
+      <div class="status-banner open">
+        <div class="icon">🗳️</div>
+        <div>
+          <h2>Oylama Açık!</h2>
+          <p>Bu hafta en sevdiğin öğretmene oyunu ver. Cuma gününe kadar oyunu değiştirebilirsin.</p>
+        </div>
+      </div>`;
+  } else if (phase === "closed") {
+    el.innerHTML = `
+      <div class="status-banner closed">
+        <div class="icon">🔒</div>
+        <div>
+          <h2>Sistem Hafta Sonu Tatilde</h2>
+          <p>Oylar toplandı, sonuçlar yarın (Pazar) açıklanacak. Pazartesi yeni oylama başlar!</p>
+        </div>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div class="status-banner reveal">
+        <div class="icon">📣</div>
+        <div>
+          <h2>Bu Haftanın Sonuçları Açıklandı!</h2>
+          <p>Tebrikler kazanana! Yeni oylama yarın (Pazartesi) başlıyor.</p>
+        </div>
+      </div>`;
+  }
+}
+
+function renderChampionStrip() {
+  const el = document.getElementById("championStrip");
+  const champion = CHAMPION;
+  if (!champion) { el.innerHTML = ""; return; }
+  const teacher = TEACHERS.find((t) => t.id === champion.teacherId);
+  if (!teacher) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="champion-strip">
+      <img src="${teacher.photo || DEFAULT_AVATAR}" alt="${teacher.name}" />
+      <div class="crown">👑</div>
+      <div class="info">
+        <b>Haftanın Öğretmeni: ${teacher.name}</b>
+        <div>${teacher.branch || ""} · ${champion.votes} oy ile taçlandı</div>
+      </div>
+    </div>`;
+}
+
+function renderTeachers() {
+  const grid = document.getElementById("teacherGrid");
+  const teachers = TEACHERS;
+  document.getElementById("teacherCount").textContent = teachers.length
+    ? teachers.length + " öğretmen"
+    : "";
+
+  if (!teachers.length) {
+    grid.innerHTML = `<div class="empty">Henüz öğretmen eklenmemiş. Yönetim panelinden öğretmen eklenebilir.</div>`;
+    return;
+  }
+
+  const votes = VOTES;
+  const myVote = getMyVote(weekKey);
+  const champion = CHAMPION;
+
+  grid.innerHTML = teachers
+    .map((t) => {
+      const isWinner = champion && champion.teacherId === t.id;
+      const isMyVote = myVote === t.id;
+      const voteLabel =
+        phase === "open"
+          ? isMyVote
+            ? "✓ Oy Verdin"
+            : "Oy Ver"
+          : "Oylama Kapalı";
+      const disabled = phase !== "open" ? "disabled" : "";
+      return `
+      <div class="teacher-card ${isWinner ? "winner" : ""}">
+        ${isWinner ? `<div class="crown-badge">👑</div>` : ""}
+        <img class="avatar" src="${t.photo || DEFAULT_AVATAR}" alt="${t.name}" />
+        <h4>${t.name}</h4>
+        <div class="branch">${t.branch || ""}</div>
+        <button class="btn btn-vote ${isMyVote ? "voted" : ""}" ${disabled}
+          onclick="vote('${t.id}')">${voteLabel}</button>
+      </div>`;
+    })
+    .join("");
+}
+
+async function vote(teacherId) {
+  if (phase !== "open") return;
+  const grid = document.getElementById("teacherGrid");
+  grid.style.opacity = "0.5";
+  await setMyVote(weekKey, teacherId);
+  VOTES = await getVotes(weekKey);
+  grid.style.opacity = "1";
+  renderTeachers();
+}
+
+async function boot() {
+  renderStatusBanner();
+  document.getElementById("teacherGrid").innerHTML = `<div class="empty">Yükleniyor...</div>`;
+
+  if (phase === "reveal") {
+    CHAMPION = await computeAndMaybeSetChampion(weekKey);
+  } else {
+    CHAMPION = await getChampion();
+  }
+  TEACHERS = await getTeachers();
+  VOTES = await getVotes(weekKey);
+
+  renderChampionStrip();
+  renderTeachers();
+}
+boot().catch((err) => {
+  console.error(err);
+  document.getElementById("teacherGrid").innerHTML =
+    `<div class="empty">⚠️ Veriye bağlanılamadı. firebase-config.js dosyasının doğru doldurulduğundan ve Firestore kurallarının izin verdiğinden emin ol.</div>`;
+});
+</script>
+</body>
+</html>
